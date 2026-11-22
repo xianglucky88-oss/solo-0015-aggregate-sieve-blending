@@ -1,0 +1,100 @@
+{
+  "project_shape": "backend",
+  "modules": [
+    {
+      "id": "blend",
+      "path": "aggregate/blend.py",
+      "responsibility": "Assess fixed dry-mass recipes and search the two-source batching grid."
+    },
+    {
+      "id": "envelope",
+      "path": "aggregate/envelope.py",
+      "responsibility": "Read the target envelope and measure each blend against its tightest sieve."
+    },
+    {
+      "id": "example",
+      "path": "aggregate/example.py",
+      "responsibility": "Send the bundled synthetic input to an ephemeral local HTTP service."
+    },
+    {
+      "id": "http_api",
+      "path": "aggregate/http_api.py",
+      "responsibility": "Local JSON transport for 粒料筛分配比工作台; only loopback is exposed."
+    },
+    {
+      "id": "sieving",
+      "path": "aggregate/sieving.py",
+      "responsibility": "Normalize dry sieve assays to exact cumulative passing fractions."
+    },
+    {
+      "id": "http_api",
+      "path": "aggregate/http_api.py",
+      "responsibility": "Local JSON transport for 粒料筛分配比工作台; only loopback is exposed."
+    },
+    {
+      "id": "example",
+      "path": "aggregate/example.py",
+      "responsibility": "Send the bundled synthetic input to an ephemeral local HTTP service."
+    }
+  ],
+  "workflows": [
+    {
+      "id": "assays",
+      "name": "筛分台账换算",
+      "entry": "POST /grading/assays",
+      "success": "总量闭合后输出每份来源的累计通过率",
+      "failure": "筛底少 1g 时拒收且不出曲线",
+      "verification": "python3 -B -m aggregate.example /grading/assays",
+      "module_ids": [
+        "sieving",
+        "http_api",
+        "example"
+      ],
+      "steps": [
+        "解析项目专用输入并验证前置条件",
+        "总量闭合后输出每份来源的累计通过率"
+      ]
+    },
+    {
+      "id": "recipe",
+      "name": "固定配方判定",
+      "entry": "POST /grading/recipe",
+      "success": "逐筛返回裕量和上下越线原因",
+      "failure": "单筛越线时整体不接受",
+      "verification": "python3 -B -m aggregate.example /grading/recipe",
+      "module_ids": [
+        "sieving",
+        "envelope",
+        "blend"
+      ],
+      "steps": [
+        "解析项目专用输入并验证前置条件",
+        "逐筛返回裕量和上下越线原因"
+      ]
+    },
+    {
+      "id": "trial-grid",
+      "name": "离散试配",
+      "entry": "POST /grading/trial-grid",
+      "success": "给出所有可行网格点和最大最差裕量配比",
+      "failure": "空可行集与非法料源不同",
+      "verification": "python3 -B -m aggregate.example /grading/trial-grid",
+      "module_ids": [
+        "sieving",
+        "envelope",
+        "blend"
+      ],
+      "steps": [
+        "解析项目专用输入并验证前置条件",
+        "给出所有可行网格点和最大最差裕量配比"
+      ]
+    }
+  ],
+  "complexity": {
+    "mechanisms": [
+      "筛孔以微米严格递减；留量按同一顺序；筛底纳入干质量闭合。保留精确分数，比例 1 表示 100%。",
+      "限值是含边界的基点区间。最差裕量为到逐筛两侧边界距离的最小值，负数表示越线。",
+      "试配网格不含纯单料端点，两份料都必须正占比；并列时取第一料份额较小者。"
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "sieves_um": [
+    4000,
+    2000
+  ],
+  "assays": {
+    "coarse": {
+      "dry_g": 100,
+      "retained_g": [
+        60,
+        30
+      ],
+      "pan_g": 9
+    },
+    "fine": {
+      "dry_g": 200,
+      "retained_g": [
+        20,
+        80
+      ],
+      "pan_g": 100
+    }
+  },
+  "limits_bp": [
+    [
+      6000,
+      7000
+    ],
+    [
+      2500,
+      3500
+    ]
+  ],
+  "parts_g": {
+    "coarse": 30,
+    "fine": 30
+  },
+  "pair": [
+    "coarse",
+    "fine"
+  ],
+  "divisions": 10
+}

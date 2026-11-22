@@ -1,0 +1,23 @@
+{
+  "language": "Python 3.11+ (stdlib)",
+  "project_shape": "backend",
+  "source_extensions": [
+    ".py"
+  ],
+  "build_command": "python3 -B -c \"from pathlib import Path; [compile(p.read_bytes(), str(p), 'exec') for p in Path('aggregate').glob('*.py')]\"",
+  "testing": "deferred",
+  "workflow_checks": [
+    {
+      "workflow_id": "assays",
+      "command": "python3 -B -m aggregate.example /grading/assays"
+    },
+    {
+      "workflow_id": "recipe",
+      "command": "python3 -B -m aggregate.example /grading/recipe"
+    },
+    {
+      "workflow_id": "trial-grid",
+      "command": "python3 -B -m aggregate.example /grading/trial-grid"
+    }
+  ]
+}
