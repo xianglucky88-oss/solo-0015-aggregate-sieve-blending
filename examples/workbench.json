@@ -35,6 +35,17 @@
     "coarse": 30,
     "fine": 30
   },
+  "archived_assays": {
+    "a": {"sieves_um": [4000, 3000, 2000], "dry_g": 100, "retained_g": [30, 20, 40], "pan_g": 10},
+    "b": {"sieves_um": [4000, 2000, 1000], "dry_g": 200, "retained_g": [20, 80, 60], "pan_g": 40}
+  },
+  "archive_required_cuts_um": [4000, 2000],
+  "archive_screen": [3000, 5000, 8000],
+  "archive_handoff": {
+    "holds": [{"specimen": "a", "bounds_um": [4000, 2000], "mass_g": 20}],
+    "orders": {"bench-east": {"specimen": "a", "bounds_um": [4000, 2000], "mass_g": 20},
+               "bench-west": {"specimen": "a", "bounds_um": [4000, 2000], "mass_g": 19}}
+  },
   "pair": [
     "coarse",
     "fine"
@@ -62,6 +73,7 @@
       }
     ]
   },
+  "replicate_limits_bp": [[4250, 4500], [1000, 2000]],
   "inventory_g": {
     "coarse": 25,
     "fine": 200

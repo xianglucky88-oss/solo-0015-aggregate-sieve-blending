@@ -1,6 +1,8 @@
 """Normalize dry sieve assays to exact cumulative passing fractions."""
 from fractions import Fraction
 
+from .dry_mass import closed_mass
+
 
 def sieve_grid(doc):
     grid = doc['sieves_um']
@@ -17,15 +19,7 @@ def assays(doc, grid):
         raise ValueError('assay_lots')
     results = {}
     for lot, row in lots.items():
-        retained = row['retained_g']
-        pan = row['pan_g']
-        mass = row['dry_g']
-        if not isinstance(retained, list) or len(retained) != len(grid):
-            raise ValueError('retained_shape')
-        if any(type(n) is not int or not 0 <= n <= 10_000_000 for n in (*retained, pan, mass)):
-            raise ValueError('mass_range')
-        if not mass or sum(retained) + pan != mass:
-            raise ValueError('assay_mass_not_closed')
+        retained, _, mass = closed_mass(row, len(grid))
         remaining, curve = mass, []
         for shelf in retained:
             remaining -= shelf

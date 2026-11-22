@@ -66,6 +66,30 @@
     {
       "workflow_id": "wb-recheck",
       "command": "python3 -B examples/workbench_check.py recheck"
+    },
+    {
+      "workflow_id": "wb-replicate-envelope",
+      "command": "python3 -B examples/workbench_check.py replicate-envelope"
+    },
+    {
+      "workflow_id": "wb-review",
+      "command": "python3 -B examples/workbench_check.py replicate-envelope"
+    },
+    {
+      "workflow_id": "wb-dispatch",
+      "command": "python3 -B examples/workbench_check.py replicate-envelope"
+    },
+    {
+      "workflow_id": "wb-shared-cuts",
+      "command": "python3 -B examples/workbench_check.py shared-cuts"
+    },
+    {
+      "workflow_id": "wb-archive-screen",
+      "command": "python3 -B examples/workbench_check.py archive-screen"
+    },
+    {
+      "workflow_id": "wb-archive-handoff",
+      "command": "python3 -B examples/workbench_check.py archive-handoff"
     }
   ]
 }

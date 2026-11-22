@@ -10,6 +10,24 @@ python3 -B -m workbench
 
 新增领域加工：复样合成、物料预算、复测级配。流程验收：`python3 -B examples/workbench_check.py`。
 
+### 共用筛档归档
+
+在工作台运行 `shared-cuts`。按各样实测筛孔交集归档各档干质量和原始档位，可逐样对回总干重。演练：`python3 -B examples/workbench_check.py shared-cuts`。
+
+### 异筛归档限值核验
+
+在工作台运行 `archive-screen`。用样品各自夹住目标孔径的实测值和实际干重推上下界，区分全可行、全越限和待补测。演练：`python3 -B examples/workbench_check.py archive-screen`。
+
+### 筛样留样交接
+
+在工作台运行 `archive-handoff`。将保留量与同批领用量落到实测共用筛档，按样品逐档出守恒账和批次核准。演练：`python3 -B examples/workbench_check.py archive-handoff`。
+
+### 成品复核与交接
+
+运行 `replicate-envelope` 后在结果中打开「查看复核交接」。合格成品可通过复核后签发；不合格成品可退回且保留原判定。发布新修订或恢复旧修订都会换代，已经通过但未签发的旧复核不能补签。已签凭据可从同一运行的历史复核中下载。
+
+旧版工作台数据库打开时会在事务中自动升级到 SQLite 结构 v2，不改写原始录入、历史运行或证据。升级后的数据库不再由旧版工作台打开；保留旧版时请使用数据库的独立副本。
+
 兼容保留原 HTTP 服务和数据格式，以下是原服务说明。
 
 ---
@@ -36,3 +54,7 @@ python3 -B -m aggregate.example /grading/trial-grid
 ```
 
 参见 [领域规则与接口](PROJECT_SPEC.md)。`examples/demo.json` 为完整合成输入；其他示例用于观察拒收或待核。业务单元测试留待后续，当前不假设联网、数据库或已有用户数据。
+
+### 复样包络核验
+
+发布更新后的 `examples/workbench.json`，在结果区选择「复样包络核验」。验收命令：`python3 -B examples/workbench_check.py replicate-envelope`。这项加工可选；老原料不含 `replicate_limits_bp` 时仍可使用原操作。

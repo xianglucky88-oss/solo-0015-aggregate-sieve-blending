@@ -25,3 +25,38 @@
 本机工作台与原接口是独立入口。浏览器只负责录入、选择和呈现，所有业务判断在 Python 中完成。导入保留输入文本和规范化 JSON 的摘要。发布固定导入时的代次；若其他工作已发布或恢复版本，旧暂存单必须重新导入。恢复只追加事件，不改历史版本。原子批加工固定一个修订，运行按修订、操作和引擎版本去重。历史复算不读取当前版本；引擎标签不匹配时不声称可复验。版本对比分别展示输入字段和加工输出。证据包不是电子签名，不应作为外部认证。
 
 生产运行使用项目专属 SQLite 文件，只接受本机来源。HTTP 对比、复算和导出与浏览器表单共用实际业务实现。页面的列表只显示有界的近期记录，不会删除数据库中的历史。原题库未迁移到新版本。
+
+## 复样包络核验
+
+POST /api/run (replicate-envelope)，读取 `examples/workbench.json` 展示的 `replicate_limits_bp`。同时保留干质量合成和每份实测对检验包络的精确结论。合成过线仍标出被平均掩盖的单样越线。没有可选原料时返回输入错误，不会影响旧入口。比较、复算和证据导出沿用相同的固定修订；不替用户重写经过审定的原料。
+## 成品复核与交接
+
+只有 `replicate-envelope` 加工可以开复核。缺少可选领域证据时仍可运行原加工，但不能伪造该复核成品；批处理中一项失败不写入部分成品。
+
+| 入口 | 保证 |
+| --- | --- |
+| `POST /api/review/open`，`run` 和 `generation` | 核验输入与产出摘要；运行所属修订及提供的发布代次都须是当前值；同运行同代次重试返回同单。 |
+| `POST /api/review/decide`，`review` 和 `decision` | 待复核可转为 `approved` 或 `returned`。通过还须领域条件满足且仍为当前代次；退回不要求修订仍为当前。重复报同一结论有效，不能改判。 |
+| `POST /api/review/history`，`run` | 列出该运行历代复核及是否已签发，按代次倒序。 |
+| `POST /api/dispatch`，`review` | 初次签发必须已批准且同代次仍有效。事务内写入唯一凭据和载荷摘要；已签发的重试返回原凭据。 |
+| `GET /api/dispatch/{review}` | 从不可变的运行、原料和复核读出载荷并校验摘要，不需要该代次仍为当前。 |
+
+SQLite v1→v2 只新增复核单与凭据结构；迁移不改写旧行、运行引擎标签和证据格式。发布事件的首次代次与复核的当前激活代次是两个不同概念。恢复相同修订可读旧制品，但新签发仍需新一代复核。
+
+## 共用筛档归档
+
+`POST /api/run (shared-cuts)`。`archived_assays` 中每份样品自带 `sieves_um` 和闭合干质量；`archive_required_cuts_um` 声明归档所必需的实测边界。`source_bin_span` 是从最大筛孔到筛底的原档位半开下标；`null` 表示两端没有有限筛孔边界。只合并原档，不补筛、不做曲线插值，也不按样品等权配比。
+
+演练：`python3 -B examples/workbench_check.py shared-cuts`。新原料不是旧导入的必填项；未提交时只影响本加工。
+
+## 异筛归档限值核验
+
+`POST /api/run (archive-screen)`。`archive_screen` 为 `[筛孔微米, 下限基点, 上限基点]`。已实测边界返回确切质量；只有一侧实测时另一侧用 0 或整份干重。汇总分母是总干质量，分数不预先取整。
+
+演练：`python3 -B examples/workbench_check.py archive-screen`。新原料不是旧导入的必填项；未提交时只影响本加工。
+
+## 筛样留样交接
+
+`POST /api/run (archive-handoff)`。`archive_handoff.holds` 与 `orders` 各项给 `specimen`、`bounds_um` 和正整数 `mass_g`；每单只引用一个已成形的共同筛档，不能用粗档推断其中任意子档。本操作核准一批静态交接计划，不执行物理发放或修改库存。
+
+演练：`python3 -B examples/workbench_check.py archive-handoff`。新原料不是旧导入的必填项；未提交时只影响本加工。

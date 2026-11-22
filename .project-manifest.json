@@ -22,6 +22,11 @@
       "responsibility": "Normalize dry sieve assays to exact cumulative passing fractions."
     },
     {
+      "id": "dry_mass",
+      "path": "aggregate/dry_mass.py",
+      "responsibility": "校验原始实测干重、各筛留量和筛底质量闭合，供单样曲线和复样合成共用。"
+    },
+    {
       "id": "wb_errors",
       "path": "workbench/errors.py",
       "responsibility": "API 业务错误及 HTTP 状态"
@@ -155,6 +160,46 @@
       "id": "wb_schema",
       "path": "workbench/schema.sql",
       "responsibility": "版本归属、外键和运行唯一性约束"
+    },
+    {
+      "id": "replicate_envelope",
+      "path": "aggregate/replicate_envelope.py",
+      "responsibility": "同时保留干质量合成和每份实测对检验包络的精确结论"
+    },
+    {
+      "id": "wb_review",
+      "path": "workbench/review.py",
+      "responsibility": "按当前发布代次和领域资格复核加工成品"
+    },
+    {
+      "id": "wb_dispatch",
+      "path": "workbench/dispatch.py",
+      "responsibility": "签发及复验绑定复核和原证据的交接凭据"
+    },
+    {
+      "id": "wb_handoff_schema",
+      "path": "workbench/handoff.sql",
+      "responsibility": "复核状态、代次归属及一单一交接的持久化约束"
+    },
+    {
+      "id": "ui_review_js",
+      "path": "web/review.js",
+      "responsibility": "展示运行复核历史并发起复核和签发操作"
+    },
+    {
+      "id": "shared_cuts",
+      "path": "aggregate/shared_cuts.py",
+      "responsibility": "按各样实测筛孔交集归档各档干质量和原始档位，可逐样对回总干重。"
+    },
+    {
+      "id": "archive_limits",
+      "path": "aggregate/archive_limits.py",
+      "responsibility": "用样品各自夹住目标孔径的实测值和实际干重推上下界，区分全可行、全越限和待补测。"
+    },
+    {
+      "id": "archive_handoff",
+      "path": "aggregate/archive_handoff.py",
+      "responsibility": "将保留量与同批领用量落到实测共用筛档，按样品逐档出守恒账和批次核准。"
     }
   ],
   "workflows": [
@@ -166,13 +211,13 @@
       "failure": "筛底少 1g 时拒收且不出曲线",
       "verification": "python3 -B -m aggregate.example /grading/assays",
       "module_ids": [
-        "sieving",
         "http_api",
-        "example"
+        "dry_mass",
+        "sieving"
       ],
       "steps": [
-        "解析项目专用输入并验证前置条件",
-        "总量闭合后输出每份来源的累计通过率"
+        "读取同一筛组的单样记录，筛逐档校验后核对干重账是否闭合",
+        "从干重逐档扣除筛留量，用精确分数输出累计通过率"
       ]
     },
     {
@@ -398,6 +443,129 @@
         "固定输入修订",
         "复测级配"
       ]
+    },
+    {
+      "id": "wb-replicate-envelope",
+      "name": "复样包络核验",
+      "entry": "POST /api/run (replicate-envelope)",
+      "success": "同时保留干质量合成和每份实测对检验包络的精确结论",
+      "failure": "合成过线仍标出被平均掩盖的单样越线",
+      "verification": "python3 -B examples/workbench_check.py replicate-envelope",
+      "module_ids": [
+        "wb_runs",
+        "wb_operations",
+        "replicate_envelope",
+        "composite",
+        "sieving",
+        "envelope"
+      ],
+      "steps": [
+        "固定同一份已发布的原料修订",
+        "同时保留干质量合成和每份实测对检验包络的精确结论",
+        "写成可复算并可导出证据的产出"
+      ]
+    },
+    {
+      "id": "wb-review",
+      "name": "业务成品复核",
+      "entry": "POST /api/review/open + /api/review/decide",
+      "success": "复核绑定运行与当前发布代次；可批准合格结果，也可保留退回的记录。",
+      "failure": "领域未过或代次已过时不能批准；已决定的单据不能改判。",
+      "module_ids": [
+        "wb_review",
+        "wb_evidence",
+        "wb_runs",
+        "wb_catalog",
+        "wb_db"
+      ],
+      "verification": "python3 -B examples/workbench_check.py replicate-envelope",
+      "steps": [
+        "核对运行的原稿、规范化输入和产出摘要",
+        "按领域条件计算可否放行",
+        "绑定发布代次并持久化复核结论"
+      ]
+    },
+    {
+      "id": "wb-dispatch",
+      "name": "签发交接凭据",
+      "entry": "POST /api/dispatch + GET /api/dispatch/{review}",
+      "success": "通过复核后签发绑定原始原料和领域成品的凭据；已经签发的历史凭据可以再次下载。",
+      "failure": "复核已批准但尚未签发时若发布代次变化，拒绝新签发；恢复相同修订不复用旧批准。",
+      "module_ids": [
+        "wb_dispatch",
+        "wb_review",
+        "wb_evidence",
+        "wb_catalog",
+        "wb_db"
+      ],
+      "verification": "python3 -B examples/workbench_check.py replicate-envelope",
+      "steps": [
+        "读取已通过的复核及当前发布指针",
+        "核验证据并写入凭据摘要",
+        "下载时再验摘要，不用当前原料替换旧证据"
+      ]
+    },
+    {
+      "id": "wb-shared-cuts",
+      "name": "共用筛档归档",
+      "entry": "POST /api/run (shared-cuts)",
+      "success": "按各样实测筛孔交集归档各档干质量和原始档位，可逐样对回总干重。",
+      "failure": "缺必需筛孔时报缺测样，在剩余实测共同边界给出粗档；没有共同筛孔不生成筛档。",
+      "verification": "python3 -B examples/workbench_check.py shared-cuts",
+      "module_ids": [
+        "wb_runs",
+        "wb_operations",
+        "shared_cuts",
+        "sieving",
+        "dry_mass"
+      ],
+      "steps": [
+        "固定原料修订",
+        "按各样实测筛孔交集归档各档干质量和原始档位，可逐样对回总干重。",
+        "更正原料后对读旧产出、复算并导出原证据"
+      ]
+    },
+    {
+      "id": "wb-archive-screen",
+      "name": "异筛归档限值核验",
+      "entry": "POST /api/run (archive-screen)",
+      "success": "用样品各自夹住目标孔径的实测值和实际干重推上下界，区分全可行、全越限和待补测。",
+      "failure": "报一份样品未测指定筛孔时，不用插值假装测过；即使最可能值过线也不能代替保守区间。",
+      "verification": "python3 -B examples/workbench_check.py archive-screen",
+      "module_ids": [
+        "wb_runs",
+        "wb_operations",
+        "archive_limits",
+        "shared_cuts",
+        "sieving",
+        "dry_mass"
+      ],
+      "steps": [
+        "固定原料修订",
+        "用样品各自夹住目标孔径的实测值和实际干重推上下界，区分全可行、全越限和待补测。",
+        "更正原料后对读旧产出、复算并导出原证据"
+      ]
+    },
+    {
+      "id": "wb-archive-handoff",
+      "name": "筛样留样交接",
+      "entry": "POST /api/run (archive-handoff)",
+      "success": "将保留量与同批领用量落到实测共用筛档，按样品逐档出守恒账和批次核准。",
+      "failure": "即便每单单独可行，各单与留样共享同档干重，合计短缺时报出缺口而不放行。",
+      "verification": "python3 -B examples/workbench_check.py archive-handoff",
+      "module_ids": [
+        "wb_runs",
+        "wb_operations",
+        "archive_handoff",
+        "shared_cuts",
+        "sieving",
+        "dry_mass"
+      ],
+      "steps": [
+        "固定原料修订",
+        "将保留量与同批领用量落到实测共用筛档，按样品逐档出守恒账和批次核准。",
+        "更正原料后对读旧产出、复算并导出原证据"
+      ]
     }
   ],
   "complexity": {
@@ -409,7 +577,13 @@
       "保留原始输入与规范化版本",
       "原子批加工",
       "固定修订复算",
-      "导出前校验证据摘要"
+      "导出前校验证据摘要",
+      "同时保留干质量合成和每份实测对检验包络的精确结论",
+      "按领域资格与发布代次审批",
+      "校验证据、审批与当前指针后签发，历史凭据重试不重新决策",
+      "按各样实测筛孔交集归档各档干质量和原始档位，可逐样对回总干重。",
+      "用样品各自夹住目标孔径的实测值和实际干重推上下界，区分全可行、全越限和待补测。",
+      "将保留量与同批领用量落到实测共用筛档，按样品逐档出守恒账和批次核准。"
     ]
   }
 }

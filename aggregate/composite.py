@@ -1,5 +1,6 @@
 """Combine independent replicate specimens by weighed dry mass."""
 from .sieving import assays, sieve_cards, sieve_grid
+from .dry_mass import closed_mass
 
 
 def composite(doc):
@@ -16,9 +17,9 @@ def composite(doc):
         samples = {row['id']: row for row in rows}
         if len(samples) != len(rows) or any(not isinstance(key, str) or not key.strip() for key in samples):
             raise ValueError('replicate_identity')
-        assays({'assays': samples}, grid)
-        merged[lot] = {'dry_g': sum(s['dry_g'] for s in rows), 'pan_g': sum(s['pan_g'] for s in rows),
-                       'retained_g': [sum(s['retained_g'][i] for s in rows) for i in range(len(grid))]}
+        masses = [closed_mass(row, len(grid)) for row in samples.values()]
+        merged[lot] = {'dry_g': sum(dry for _, _, dry in masses), 'pan_g': sum(pan for _, pan, _ in masses),
+                       'retained_g': [sum(weights) for weights in zip(*(r for r, _, _ in masses))]}
     cards = sieve_cards({**doc, 'assays': merged})
     return {'rows': [{'lot': lot, 'specimens': [r['id'] for r in lots[lot]], 'mass': mass, 'sieves': cards[lot]}
                      for lot, mass in sorted(merged.items())]}
