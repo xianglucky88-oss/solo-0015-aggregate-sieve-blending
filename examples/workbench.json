@@ -1,0 +1,79 @@
+{
+  "sieves_um": [
+    4000,
+    2000
+  ],
+  "assays": {
+    "coarse": {
+      "dry_g": 100,
+      "retained_g": [
+        60,
+        30
+      ],
+      "pan_g": 10
+    },
+    "fine": {
+      "dry_g": 200,
+      "retained_g": [
+        20,
+        80
+      ],
+      "pan_g": 100
+    }
+  },
+  "limits_bp": [
+    [
+      6000,
+      7000
+    ],
+    [
+      2500,
+      3500
+    ]
+  ],
+  "parts_g": {
+    "coarse": 30,
+    "fine": 30
+  },
+  "pair": [
+    "coarse",
+    "fine"
+  ],
+  "divisions": 10,
+  "replicates": {
+    "coarse": [
+      {
+        "id": "c-1",
+        "dry_g": 100,
+        "retained_g": [
+          60,
+          30
+        ],
+        "pan_g": 10
+      },
+      {
+        "id": "c-2",
+        "dry_g": 200,
+        "retained_g": [
+          110,
+          50
+        ],
+        "pan_g": 40
+      }
+    ]
+  },
+  "inventory_g": {
+    "coarse": 25,
+    "fine": 200
+  },
+  "recheck_assays": {
+    "coarse": {
+      "dry_g": 100,
+      "retained_g": [
+        65,
+        25
+      ],
+      "pan_g": 10
+    }
+  }
+}
