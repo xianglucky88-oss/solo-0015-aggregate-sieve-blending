@@ -1,6 +1,6 @@
 from contextlib import closing
 
-from . import catalog, comparison, dispatch, evidence, history, intake, publication, review, runs
+from . import archive_stock, catalog, comparison, dispatch, evidence, history, intake, publication, review, runs
 from .codec import identifier
 from .db import connect, transaction
 from .errors import Problem
@@ -13,6 +13,10 @@ class Service:
         self.review_policy = profile.REVIEW
         self.ops = Operations(profile)
         self.writes = {
+            '/api/archive-stock/open': lambda db, d: archive_stock.open_stock(db, d['run'], d['generation']),
+            '/api/archive-stock/issue': lambda db, d: archive_stock.issue(db, d),
+            '/api/archive-stock/return': lambda db, d: archive_stock.adjust(db, d, 'return'),
+            '/api/archive-stock/correct': lambda db, d: archive_stock.adjust(db, d, 'correction'),
             '/api/review/open': lambda db, d: review.open_case(db, self.review_policy, d['run'], d['generation']),
             '/api/review/decide': lambda db, d: review.decide(db, d['review'], d['decision']),
             '/api/dispatch': lambda db, d: dispatch.issue(db, d['review']),
@@ -22,6 +26,8 @@ class Service:
             '/api/run': lambda db, d: runs.batch(db, self.ops, d['dataset'], d.get('revision'), d['operations']),
         }
         self.reads = {
+            '/api/archive-stock/reconcile': lambda db, d: archive_stock.reconcile(db, d['run']),
+            '/api/archive-stock/history': lambda db, d: archive_stock.history(db, d['dataset'], d.get('after', 0)),
             '/api/review/history': lambda db, d: {'cases': review.for_run(db, d['run'])},
             '/api/history': lambda db, d: history.for_dataset(db, d['dataset']),
             '/api/compare': lambda db, d: comparison.compare(db, self.ops, d['dataset'], d['before'], d['after'], d['operation']),
