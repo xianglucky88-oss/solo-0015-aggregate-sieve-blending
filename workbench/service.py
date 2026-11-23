@@ -1,6 +1,6 @@
 from contextlib import closing
 
-from . import archive_stock, catalog, comparison, dispatch, evidence, history, intake, publication, review, runs
+from . import archive_stock, catalog, comparison, dispatch, evidence, history, intake, mix_ledger, publication, review, runs
 from .codec import identifier
 from .db import connect, transaction
 from .errors import Problem
@@ -24,10 +24,19 @@ class Service:
             '/api/publish': lambda db, d: publication.publish(db, d['draft']),
             '/api/restore': lambda db, d: publication.restore(db, d['dataset'], d['revision'], d['generation']),
             '/api/run': lambda db, d: runs.batch(db, self.ops, d['dataset'], d.get('revision'), d['operations']),
+            '/api/mix/admit-rework': lambda db, d: mix_ledger.admit(db, d, 'rework'),
+            '/api/mix/admit-fresh': lambda db, d: mix_ledger.admit(db, d, 'fresh'),
+            '/api/mix/commit-locked': lambda db, d: mix_ledger.commit(db, d, lock=True),
+            '/api/mix/commit-pool': lambda db, d: mix_ledger.commit(db, d, lock=False),
+            '/api/mix/weigh': lambda db, d: mix_ledger.weigh(db, d),
+            '/api/mix/reject': lambda db, d: mix_ledger.reject(db, d),
         }
         self.reads = {
             '/api/archive-stock/reconcile': lambda db, d: archive_stock.reconcile(db, d['run']),
             '/api/archive-stock/history': lambda db, d: archive_stock.history(db, d['dataset'], d.get('after', 0)),
+            '/api/mix/status': lambda db, d: mix_ledger.status(db, d['dataset']),
+            '/api/mix/history': lambda db, d: mix_ledger.history(db, d['dataset'], d.get('after', 0)),
+            '/api/mix/explain': lambda db, d: mix_ledger.explain(db, d),
             '/api/review/history': lambda db, d: {'cases': review.for_run(db, d['run'])},
             '/api/history': lambda db, d: history.for_dataset(db, d['dataset']),
             '/api/compare': lambda db, d: comparison.compare(db, self.ops, d['dataset'], d['before'], d['after'], d['operation']),
