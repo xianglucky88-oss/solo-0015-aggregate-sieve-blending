@@ -40,7 +40,7 @@ def initialize(path, product):
     try:
         with transaction(db, write=True):
             version = db.execute('PRAGMA user_version').fetchone()[0]
-            if version not in (0, 1, 2, 3):
+            if version not in (0, 1, 2, 3, 4):
                 raise Problem('database_version')
             if version == 0:
                 if db.execute("SELECT 1 FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").fetchone():
@@ -55,5 +55,8 @@ def initialize(path, product):
             if version < 3:
                 _apply_schema(db, 'archive_stock.sql')
                 db.execute('PRAGMA user_version=3')
+            if version < 4:
+                _apply_schema(db, 'archive_custody.sql')
+                db.execute('PRAGMA user_version=4')
     finally:
         db.close()

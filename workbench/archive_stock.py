@@ -1,5 +1,5 @@
 """One physical archive per dataset; admission and actual movements are independent."""
-from . import catalog
+from . import archive_custody, catalog
 from .archive_stock_plan import handoff
 from .codec import dataset, decode, encode, generation, identifier
 from .errors import Problem
@@ -81,6 +81,10 @@ def _used(db, name, cell, order=None):
     return db.execute(sql + ' AND order_name=?', (name, cell, order)).fetchone()[0]
 
 
+def _custody(db, name, cell):
+    return archive_custody.cell_totals(db, name).get(cell, archive_custody.ZERO_TOTALS)
+
+
 def issue(db, data):
     run_id, activation = identifier(data['run']), generation(data['generation'])
     ticket = dataset(data['ticket'])
@@ -103,7 +107,7 @@ def issue(db, data):
         raise Problem('stock_order_retargeted', 409)
     if _used(db, name, cell, order) + grams > quota:
         raise Problem('stock_order_quota', 409)
-    if _used(db, name, cell) + holds[cell] + grams > opening[cell]:
+    if _used(db, name, cell) + holds[cell] + archive_custody.blocked_g(_custody(db, name, cell)) + grams > opening[cell]:
         raise Problem('stock_hold_or_balance', 409)
     return _append(db, name, ticket, 'issue', None, cell, order, grams, request)
 
@@ -143,7 +147,7 @@ def adjust(db, data, kind):
         if delta == 0 or quantity < returned:
             raise Problem('stock_correction_amount', 409)
         _, opening = _opening(db, name)
-        if _used(db, name, cell) + delta > opening[cell]:
+        if _used(db, name, cell) + _custody(db, name, cell)['issued'] + delta > opening[cell]:
             raise Problem('stock_physical_balance', 409)
     else:
         if quantity > issued - returned:
@@ -162,6 +166,9 @@ def reconcile(db, run_id):
         cell = row['cell']
         actual[(row['order_name'], cell)] = (row['net_g'], row['returned_g'])
         usage[cell] = usage.get(cell, 0) + row['net_g']
+    custody = archive_custody.cell_totals(db, name)
+    for cell, totals in custody.items():
+        usage[cell] = usage.get(cell, 0) + totals['issued']
     planned = {(order, cell): grams for order, (cell, grams) in orders.items()}
     rows = []
     for order, cell in sorted(planned.keys() | actual.keys()):
@@ -174,13 +181,18 @@ def reconcile(db, run_id):
                      'net_used_g': net, 'difference_g': net - quota})
     cells = []
     for key in sorted(opening.keys() | holds.keys()):
+        totals = custody.get(key, archive_custody.ZERO_TOTALS)
+        held = totals['held'] + totals['pending'] + totals['verified']
         on_hand = opening[key] - usage.get(key, 0) if key in opening else None
         matches = key in opening and measured.get(key) == opening[key]
+        unheld = on_hand - holds.get(key, 0) if matches else None
         specimen, bounds = decode(key)
         cells.append({'specimen': specimen, 'bounds_um': bounds, 'opening_g': opening.get(key),
                       'plan_measured_g': measured.get(key), 'measurement_matches': matches,
                       'on_hand_g': on_hand, 'plan_hold_g': holds.get(key, 0),
-                      'unheld_g': on_hand - holds.get(key, 0) if matches else None})
+                      'unheld_g': unheld, 'custody_held_g': held, 'custody_pending_g': totals['pending'],
+                      'custody_issued_g': totals['issued'],
+                      'available_g': unheld - held if unheld is not None else None})
     latest = db.execute('SELECT COALESCE(MAX(seq), 0) FROM archive_movements WHERE dataset=?', (name,)).fetchone()[0]
     return {'stock': stock, 'run': run_id, 'revision': revision, 'plan_state': state,
             'head': catalog.head(db, name), 'through_seq': latest, 'cells': cells, 'orders': rows}

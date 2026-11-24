@@ -1,6 +1,6 @@
 from contextlib import closing
 
-from . import archive_stock, catalog, comparison, dispatch, evidence, history, intake, publication, review, runs
+from . import archive_custody, archive_stock, catalog, comparison, dispatch, evidence, history, intake, publication, review, runs
 from .codec import identifier
 from .db import connect, transaction
 from .errors import Problem
@@ -11,8 +11,15 @@ class Service:
     def __init__(self, path, profile):
         self.path = path
         self.review_policy = profile.REVIEW
+        self.custody_restore = getattr(profile, 'CUSTODY_RESTORE', 'package')
+        if self.custody_restore not in ('package', 'round'):
+            raise Problem('custody_policy')
         self.ops = Operations(profile)
         self.writes = {
+            '/api/archive-custody/dispatch': lambda db, d: archive_custody.dispatch(db, d),
+            '/api/archive-custody/issue': lambda db, d: archive_custody.issue(db, self.custody_restore, d),
+            '/api/archive-custody/return': lambda db, d: archive_custody.return_package(db, self.custody_restore, d),
+            '/api/archive-custody/verify': lambda db, d: archive_custody.verify(db, self.custody_restore, d),
             '/api/archive-stock/open': lambda db, d: archive_stock.open_stock(db, d['run'], d['generation']),
             '/api/archive-stock/issue': lambda db, d: archive_stock.issue(db, d),
             '/api/archive-stock/return': lambda db, d: archive_stock.adjust(db, d, 'return'),
@@ -26,6 +33,7 @@ class Service:
             '/api/run': lambda db, d: runs.batch(db, self.ops, d['dataset'], d.get('revision'), d['operations']),
         }
         self.reads = {
+            '/api/archive-custody/reconcile': lambda db, d: archive_custody.reconcile(db, self.custody_restore, d['dataset']),
             '/api/archive-stock/reconcile': lambda db, d: archive_stock.reconcile(db, d['run']),
             '/api/archive-stock/history': lambda db, d: archive_stock.history(db, d['dataset'], d.get('after', 0)),
             '/api/review/history': lambda db, d: {'cases': review.for_run(db, d['run'])},

@@ -34,3 +34,6 @@ def _review_eligible(report):
 
 REVIEW = ('replicate-envelope', _review_eligible)
 REQUIRED = ('recipe', 'assays', 'trial-grid')
+
+# 整包托管交回包恢复可领的时机：'package' 归属独立确认即恢复，'round' 等本轮全部对平后恢复。
+CUSTODY_RESTORE = 'package'

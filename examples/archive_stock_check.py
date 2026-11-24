@@ -176,7 +176,7 @@ def main():
         initialize(db, profile.PRODUCT)
         initialize(db, profile.PRODUCT)
         with closing(connect(db)) as migrated:
-            assert migrated.execute('PRAGMA user_version').fetchone()[0] == 3
+            assert migrated.execute('PRAGMA user_version').fetchone()[0] == 4
         with ThreadingHTTPServer(('127.0.0.1', 0), QuietEndpoint) as server:
             server.service = Service(db, profile)
             worker = Thread(target=server.serve_forever)
